@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+
+# Runtime data files (Raspberry Pi)
+*.json
+!**/res/**/*.json
+
+# Android build & signing secrets
+android/out/
+android/android-build/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.pem
+*.key
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.orig
+*.bak
+*.zip

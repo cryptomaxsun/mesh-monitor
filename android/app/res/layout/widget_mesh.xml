@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:padding="10dp"
+    android:background="@drawable/widget_bg_70">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_rad"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="☢️ — мкЗв/год"
+            android:textColor="#5BFFAD"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:shadowColor="#CC000000"
+            android:shadowRadius="3"
+            android:shadowDy="1"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/widget_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textColor="#A8CFC0"
+            android:textSize="11sp"
+            android:shadowColor="#CC000000"
+            android:shadowRadius="3"
+            android:shadowDy="1"
+            android:paddingRight="8dp" />
+
+        <TextView
+            android:id="@+id/widget_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔄"
+            android:textSize="15sp"
+            android:paddingLeft="4dp"
+            android:paddingRight="2dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="4dp">
+
+        <TextView
+            android:id="@+id/widget_baro"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🧭 Барометр: —"
+            android:textColor="#42D9FF"
+            android:textSize="12sp"
+            android:shadowColor="#CC000000"
+            android:shadowRadius="3"
+            android:shadowDy="1"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/widget_temp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="— hPa"
+            android:textColor="#D8FBEA"
+            android:textSize="12sp"
+            android:shadowColor="#CC000000"
+            android:shadowRadius="3"
+            android:shadowDy="1"
+            android:paddingLeft="8dp"
+            android:singleLine="true" />
+    </LinearLayout>
+</LinearLayout>
