@@ -7,7 +7,6 @@
 #include <ArduinoJson.h>
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
-#include <esp_adc_cal.h>
 #include <time.h>
 
 // ====================== НАСТРОЙКИ ======================
@@ -109,32 +108,23 @@ pulseCount++;
 
 // ====================== ЧТЕНИЕ БАТАРЕИ (TTGO T-Display) ======================
 void readBattery() {
-static bool adcCalInit = false;
-static esp_adc_cal_characteristics_t adcChars;
-if (!adcCalInit) {
-esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adcChars);
-adcCalInit = true;
-}
-
 // Включаем делитель
 digitalWrite(ADC_EN_PIN, HIGH);
 delay(10);
 
-// Многократное усреднение (важно!)
-uint32_t sum = 0;
+// Многократное усреднение калиброванных милливольт (встроенная eFuse-калибровка АЦП ESP32)
+uint32_t mvSum = 0;
 const int samples = 64;
 for (int i = 0; i < samples; i++) {
-sum += analogRead(BATTERY_PIN);
+mvSum += analogReadMilliVolts(BATTERY_PIN);
 delayMicroseconds(300);
 }
-float adc = sum / (float)samples;
 
 // Выключаем делитель
 digitalWrite(ADC_EN_PIN, LOW);
 
-// Заводская eFuse-калибровка АЦП + делитель 1:2 на TTGO T-Display
-uint32_t mv = esp_adc_cal_raw_to_voltage((uint32_t)(adc + 0.5f), &adcChars);
-float rawVoltage = (mv * 2.0f) / 1000.0f;
+// Делитель 1:2 на TTGO T-Display
+float rawVoltage = ((mvSum / (float)samples) * 2.0f) / 1000.0f;
 
 // Плавное сглаживание (EMA) без искажения первого замера
 static bool batInit = false;
