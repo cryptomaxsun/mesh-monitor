@@ -109,6 +109,13 @@ pulseCount++;
 
 // ====================== ЧТЕНИЕ БАТАРЕИ (TTGO T-Display) ======================
 void readBattery() {
+static bool adcCalInit = false;
+static esp_adc_cal_characteristics_t adcChars;
+if (!adcCalInit) {
+esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adcChars);
+adcCalInit = true;
+}
+
 // Включаем делитель
 digitalWrite(ADC_EN_PIN, HIGH);
 delay(10);
@@ -122,35 +129,40 @@ delayMicroseconds(300);
 }
 float adc = sum / (float)samples;
 
-// Правильная формула для TTGO T-Display
-// 2.0 — делитель, 3.3 — питание, 1.1 — типичный Vref
-batteryVoltage = (adc / 4095.0f) * 2.0f * 3.3f * (1100.0f / 1000.0f);
-
 // Выключаем делитель
 digitalWrite(ADC_EN_PIN, LOW);
 
-// Более точная кривая для LiPo (с учётом просадки под нагрузкой)
-if (batteryVoltage >= 4.15f) batteryPercent = 100;
-else if (batteryVoltage >= 4.08f) batteryPercent = 95;
-else if (batteryVoltage >= 4.00f) batteryPercent = 85;
-else if (batteryVoltage >= 3.92f) batteryPercent = 75;
-else if (batteryVoltage >= 3.85f) batteryPercent = 65;
-else if (batteryVoltage >= 3.78f) batteryPercent = 55;
-else if (batteryVoltage >= 3.70f) batteryPercent = 45;
-else if (batteryVoltage >= 3.62f) batteryPercent = 35;
-else if (batteryVoltage >= 3.55f) batteryPercent = 25;
-else if (batteryVoltage >= 3.48f) batteryPercent = 15;
-else if (batteryVoltage >= 3.40f) batteryPercent = 8;
-else if (batteryVoltage >= 3.30f) batteryPercent = 3;
-else batteryPercent = 0;
+// Заводская eFuse-калибровка АЦП + делитель 1:2 на TTGO T-Display
+uint32_t mv = esp_adc_cal_raw_to_voltage((uint32_t)(adc + 0.5f), &adcChars);
+float rawVoltage = (mv * 2.0f) / 1000.0f;
 
-// Небольшая защита от скачков
-static int lastPercent = 50;
-if (abs(batteryPercent - lastPercent) > 15) {
-// Слишком резкий скачок — сглаживаем
-batteryPercent = (batteryPercent + lastPercent) / 2;
+// Плавное сглаживание (EMA) без искажения первого замера
+static bool batInit = false;
+if (!batInit) {
+batteryVoltage = rawVoltage;
+batInit = true;
+} else {
+batteryVoltage = batteryVoltage * 0.75f + rawVoltage * 0.25f;
 }
-lastPercent = batteryPercent;
+
+// Кусочно-линейная кривая разряда LiPo (шаг 1%)
+static const float vPts[] = {4.20f, 4.10f, 4.00f, 3.90f, 3.82f, 3.76f, 3.70f, 3.62f, 3.50f, 3.35f, 3.20f};
+static const int   pPts[] = {100,   92,    82,    70,    58,    44,    30,    18,    8,     2,     0};
+const int nPts = sizeof(pPts) / sizeof(pPts[0]);
+
+if (batteryVoltage >= vPts[0]) {
+batteryPercent = 100;
+} else if (batteryVoltage <= vPts[nPts - 1]) {
+batteryPercent = 0;
+} else {
+for (int i = 0; i < nPts - 1; i++) {
+if (batteryVoltage >= vPts[i + 1]) {
+float ratio = (batteryVoltage - vPts[i + 1]) / (vPts[i] - vPts[i + 1]);
+batteryPercent = (int)(pPts[i + 1] + ratio * (pPts[i] - pPts[i + 1]) + 0.5f);
+break;
+}
+}
+}
 }
 
 void syncTime() {
