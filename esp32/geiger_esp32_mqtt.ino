@@ -10,11 +10,6 @@
 #include <esp_adc_cal.h>
 #include <time.h>
 
-// Координаты установки вашего домашнего дозиметра
-const float MY_LATITUDE = 0.00000; // Замените на вашу широту
-const float MY_LONGITUDE = 0.00000; // Замените на вашу долготу
-
-
 // ====================== НАСТРОЙКИ ======================
 const char* WIFI_SSID = "example_wifi_ssid";
 const char* WIFI_PASS = "example_wifi_password";
@@ -32,11 +27,7 @@ const char* GMC_USER_ID = "example_gmc_user_id";
 const char* GMC_DEV_ID = "example_gmc_dev_id";
 const char* RADMON_USER = "example_radmon_user";
 const char* RADMON_PASS = "example_radmon_pass";
-const char* SAFECAST_ID = "example_safecast_id";
 const char* THINGSPEAK_API_KEY = "example_thingspeak_api_key";
-const char* OPENRADIATION_API_KEY = "example_openradiation_api_key";
-const char* OPENRADIATION_USER = "example_openradiation_user";
-const char* OPENRADIATION_PASS = "example_openradiation_pass";
 
 // NTP настройки
 const char* NTP_SERVER = "pool.ntp.org";
@@ -361,40 +352,7 @@ http.end();
 }
 delay(600);
 
-// ---------- 3. Safecast ----------
-{
-WiFiClientSecure client;
-client.setInsecure(); // обязательно
-
-http.begin(client, "https://api.safecast.org/measurements.json?api_key=" + String(SAFECAST_ID));
-http.addHeader("Content-Type", "application/json");
-http.addHeader("User-Agent", "ESP32-GGreg20");
-
-// Получаем текущее время в UTC
-time_t now = time(nullptr);
-struct tm timeinfo;
-gmtime_r(&now, &timeinfo);
-
-char timeStr[25];
-strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M:%S+00:00", &timeinfo);
-
-String payload = "{";
-payload += "\"latitude\":" + String(0.00000, 5) + ",";
-payload += "\"longitude\":" + String(0.00000, 5) + ",";
-payload += "\"value\":" + String((int)currentCPM) + ",";
-payload += "\"unit\":\"cpm\",";
-payload += "\"captured_at\":\"" + String(timeStr) + "\"";
-payload += "}";
-
-int code = http.POST(payload);
-Serial.printf("Safecast: %d\n", code);
-Serial.println(http.getString());
-// Serial.println(payload); // раскомментируй для отладки
-http.end();
-}
-delay(600);
-
-// ---------- 4. ThingSpeak ----------
+// ---------- 3. ThingSpeak ----------
 {
 // Формируем текст статуса
 String statusText = "Радиация: " + String(currentuSvh, 3) + " uSv/h";
@@ -434,69 +392,6 @@ Serial.printf("ThingSpeak ERROR, HTTP code: %d, ответ: %s\n", code, respons
 }
 
 http.end();
-}
-delay(600);
-
-// ------------5. OpenRadiation ----------------
-
-// 1. Формирование корректного UUID (только строчные буквы %08x-%04x...)
-char uuid[37];
-snprintf(uuid, sizeof(uuid), "%08x-%04x-%04x-%04x-%04x%08x",
-(unsigned long)esp_random(),
-(uint16_t)(esp_random() & 0xFFFF),
-(uint16_t)((esp_random() & 0x0FFF) | 0x4000),
-(uint16_t)((esp_random() & 0x3FFF) | 0x8000),
-(unsigned long)esp_random(),
-(unsigned long)esp_random());
-
-// 2. Формирование времени в формате ISO 8601 UTC
-time_t now = time(nullptr);
-struct tm timeinfo;
-gmtime_r(&now, &timeinfo);
-char timeStr[30];
-strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M:%S.000Z", &timeinfo);
-
-// 3. Формирование валидного JSON (числа и boolean БЕЗ кавычек)
-String openRadPayload = "{";
-openRadPayload += "\"apiKey\":\"" + String(OPENRADIATION_API_KEY) + "\",";
-openRadPayload += "\"data\":{";
-openRadPayload += "\"reportUuid\":\"" + String(uuid) + "\",";
-openRadPayload += "\"latitude\":" + String(MY_LATITUDE, 6) + ",";
-openRadPayload += "\"longitude\":" + String(MY_LONGITUDE, 6) + ",";
-openRadPayload += "\"value\":" + String(currentuSvh, 4) + ","; // Float
-openRadPayload += "\"startTime\":\"" + String(timeStr) + "\",";
-openRadPayload += "\"hitsNumber\":" + String(currentCPM) + ","; // Int
-openRadPayload += "\"apparatusSensorType\":\"geiger\",";
-openRadPayload += "\"apparatusTubeType\":\"SBM-20\",";
-openRadPayload += "\"manualReporting\":false,"; // Boolean
-openRadPayload += "\"userId\":\"" + String(OPENRADIATION_USER) + "\",";
-openRadPayload += "\"userPwd\":\"" + String(OPENRADIATION_PASS) + "\",";
-openRadPayload += "\"measurementEnvironment\":\"city\",";
-openRadPayload += "\"measurementHeight\":1,"; // Int
-openRadPayload += "\"reportContext\":\"routine\"";
-openRadPayload += "}}";
-
-// 4. Отправка POST-запроса через HTTPS
-WiFiClientSecure client;
-client.setInsecure(); // Пропуск валидации SSL-сертификата
-
-HTTPClient orhttp;
-if (http.begin(client, "https://submit.openradiation.net/measurements")) {
-http.addHeader("Content-Type", "application/vnd.api+json");
-http.addHeader("Accept", "application/vnd.api+json");
-
-int code = http.POST(openRadPayload);
-Serial.printf("OpenRadiation HTTP Code: %d\n", code);
-
-if (code > 0) {
-String response = http.getString();
-Serial.println("Response: " + response);
-} else {
-Serial.printf("Error on POST: %s\n", http.errorToString(code).c_str());
-}
-http.end();
-} else {
-Serial.println("OpenRadiation: Ошибка подключения к серверу");
 }
 }
 
